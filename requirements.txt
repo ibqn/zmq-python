@@ -1,4 +1,4 @@
 pyzmq
 
-#optional for pep8 hints
+# optional for pep8 hints
 pycodestyle

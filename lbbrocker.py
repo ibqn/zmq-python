@@ -1,6 +1,7 @@
 import multiprocessing
 
 import zmq
+import zhelpers
 
 
 NBR_CLIENTS = 10
@@ -14,6 +15,7 @@ def client_task(ident):
     socket.connect("ipc://frontend.ipc")
 
     # Send request, get reply
+    print(f"{socket.identity.decode()}: sending 'hello'")
     socket.send(b"HELLO")
     reply = socket.recv()
     print(f"{socket.identity.decode()}: {reply.decode()}")
@@ -25,6 +27,7 @@ def worker_task(ident):
     socket.identity = f"Worker-{ident}".encode()
     socket.connect("ipc://backend.ipc")
 
+    print(f"{socket.identity.decode()}: ready")
     # Tell broker we're ready for work
     socket.send(b"READY")
 
@@ -67,6 +70,7 @@ def main():
         if backend in sockets:
             # Handle worker activity on the backend
             request = backend.recv_multipart()
+            zhelpers.dump(request)
             worker, empty, client = request[:3]
             if not workers:
                 # Poll for clients now that a worker is available
@@ -93,6 +97,7 @@ def main():
     backend.close()
     frontend.close()
     context.term()
+
 
 if __name__ == "__main__":
     main()
