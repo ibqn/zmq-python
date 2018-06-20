@@ -5,6 +5,7 @@ Helper module for example applications. Mimics ZeroMQ Guide's zhelpers.h.
 
 import binascii
 import os
+import sys
 from random import randint
 
 import zmq
@@ -33,7 +34,8 @@ def dump(msg_or_socket):
         except UnicodeDecodeError:
             content += f"0x{binascii.hexlify(part).decode('ascii')}"
         content += '\n'
-    print(content, end='')
+    sys.stdout.write(content)
+    sys.stdout.flush()
 
 
 def set_id(zsocket):
