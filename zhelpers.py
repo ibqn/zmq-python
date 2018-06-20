@@ -25,13 +25,15 @@ def dump(msg_or_socket):
         msg = msg_or_socket.recv_multipart()
     else:
         msg = msg_or_socket
-    print("----------------------------------------")
+    content = "-" * 40 + "\n"
     for part in msg:
-        print(f"[{len(part):03d}]", end=' ')
+        content += f"[{len(part):03d}] "
         try:
-            print(part.decode('ascii'))
+            content += part.decode('ascii')
         except UnicodeDecodeError:
-            print(f"0x{binascii.hexlify(part).decode('ascii')}")
+            content += f"0x{binascii.hexlify(part).decode('ascii')}"
+        content += '\n'
+    print(content, end='')
 
 
 def set_id(zsocket):
