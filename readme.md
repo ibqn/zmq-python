@@ -18,7 +18,7 @@ Activate the environment and if required bring it up to date
 
 ``` bash
 source ./venv/bin/activate
-pip install --upgrade pip
+python -m pip install --upgrade pip
 ```
 
 Then, finally install the requirements i.e. `pyzmq` and `pycodestyle`. The latter one is optional and only for linting hints for the `vscode` editor.
@@ -28,5 +28,4 @@ pip install --requirement ./requirements.txt
 pip freeze
 pycodestyle==2.4.0
 pyzmq==17.0.0
-
 ```
