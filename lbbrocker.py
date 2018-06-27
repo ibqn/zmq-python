@@ -4,7 +4,7 @@ import zmq
 import zhelpers
 
 
-NBR_CLIENTS = 10
+NBR_CLIENTS = 10**2
 NBR_WORKERS = 3
 
 
@@ -16,7 +16,7 @@ def client_task(ident):
 
     # Send request, get reply
     print(f"{socket.identity.decode()}: sending 'hello'")
-    socket.send(b"HELLO")
+    socket.send(f"HELLO from client {ident}".encode())
     reply = socket.recv()
     print(f"{socket.identity.decode()}: {reply.decode()}")
 
@@ -71,14 +71,14 @@ def main():
             # Handle worker activity on the backend
             request = backend.recv_multipart()
             zhelpers.dump(request)
-            worker, empty, client = request[:3]
+            [worker, empty, client] = request[:3]
             if not workers:
                 # Poll for clients now that a worker is available
                 poller.register(frontend, zmq.POLLIN)
             workers.append(worker)
             if client != b"READY" and len(request) > 3:
                 # If client reply, send rest back to frontend
-                empty, reply = request[3:]
+                [empty, reply] = request[3:]
                 frontend.send_multipart([client, b"", reply])
                 count -= 1
                 if not count:
@@ -86,7 +86,9 @@ def main():
 
         if frontend in sockets:
             # Get next client request, route to last-used worker
-            client, empty, request = frontend.recv_multipart()
+            multipart = frontend.recv_multipart()
+            zhelpers.dump(multipart)
+            [client, empty, request] = multipart[:3]
             worker = workers.pop(0)
             backend.send_multipart([worker, b"", client, b"", request])
             if not workers:
