@@ -101,7 +101,7 @@ class LRUQueue(object):
         self.available_workers += 1
         self.workers.append(worker_addr)
 
-        #   Second frame is empty
+        # Second frame is empty
         assert empty == b""
 
         # Third frame is READY or else a client reply address
