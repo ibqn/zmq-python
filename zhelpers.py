@@ -11,6 +11,11 @@ from random import randint
 import zmq
 
 
+def tprint(msg):
+    sys.stdout.write(msg + '\n')
+    sys.stdout.flush()
+
+
 def socket_set_hwm(socket, hwm=-1):
     """libzmq 2/3/4 compatible sethwm"""
     try:
