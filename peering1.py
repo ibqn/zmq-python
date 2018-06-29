@@ -15,6 +15,7 @@ def main(myself, others):
 
     # State Front-End
     statefe = context.socket(zmq.SUB)
+
     statefe.setsockopt(zmq.SUBSCRIBE, b'')
 
     bind_address = f"ipc://{myself}-state.ipc"
@@ -33,18 +34,17 @@ def main(myself, others):
 
         # Handle incoming status message
         if socks.get(statefe) == zmq.POLLIN:
-            msg = statefe.recv_multipart()
+            msg = [m.decode() for m in statefe.recv_multipart()]
             print(f'{myself} Received: {msg}')
 
         else:
             # Send our address and a random value
             # for worker availability
-            msg = [bind_address, (u'%i' % random.randrange(1, 10))]
-            msg = [m.encode('ascii') for m in msg]
+            msg = [bind_address, str(random.randrange(1, 10))]
+            msg = [m.encode() for m in msg]
             statebe.send_multipart(msg)
-        ##################################
 
-# Solution with select() #########
+# Solution with select()
 #        pollin, pollout, pollerr = zmq.select([statefe], [], [], 1)
 #
 #        if pollin and pollin[0] == statefe:
@@ -57,11 +57,17 @@ def main(myself, others):
 #            # for worker availability
 #            msg = [bind_address, str(random.randrange(1, 10))]
 #            statebe.send_multipart(msg)
-##################################
+
 
 if __name__ == '__main__':
     if len(sys.argv) >= 2:
-        main(myself=sys.argv[1], others=sys.argv[2:])
+        try:
+            main(
+                myself=sys.argv[1],
+                others=sys.argv[2:]
+            )
+        except KeyboardInterrupt:
+            pass
     else:
-        print("Usage: peering.py <myself> <peer_1> … <peer_N>")
+        print('Usage: peering.py <myself> <peer_1> … <peer_N>')
         sys.exit(1)
