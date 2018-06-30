@@ -6,12 +6,7 @@ from random import (
     randint,
     random,
 )
-
-
-def tprint(msg):
-    """like print, but won't get newlines confused with multiple threads"""
-    sys.stdout.write(msg + '\n')
-    sys.stdout.flush()
+from zhelpers import tprint
 
 
 class ClientTask(threading.Thread):
