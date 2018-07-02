@@ -10,25 +10,6 @@ from zhelpers import tprint
 NBR_CLIENTS = 10
 NBR_WORKERS = 3
 
-dc = {
-    localfe: {
-        connect: 'tcp://localhost:5555',
-        bind: 'tcp://*:5555',
-    },
-    localbe: {
-        connect: 'tcp://localhost:5556',
-        bind: 'tcp://*:5556',
-    },
-    cloudfe: {
-        connect: 'tcp://localhost:5557',
-        bind: 'tcp://*:5557'
-    },
-    cloudbe: {
-        connect: 'tcp://localhost:5558',
-        bind: 'tcp://*:5558'
-    },
-}
-
 
 def client_task(name, i):
     """Request-reply client using REQ socket"""
@@ -140,7 +121,8 @@ def main(myself, peers):
 
         # Handle reply from local worker
         msg = None
-        if localbe in events:
+        # if localbe in events:
+        if events.get(localbe) == zmq.POLLIN:
             msg = localbe.recv_multipart()
             [address, empty], msg = msg[:2], msg[2:]
             workers.append(address)
