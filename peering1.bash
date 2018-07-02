@@ -1,4 +1,4 @@
-#!/bin/env/bash
+#!/usr/bin/env bash
 
 
 # stop on first error
