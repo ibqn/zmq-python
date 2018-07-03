@@ -61,7 +61,7 @@ def zpipe(ctx):
     b = ctx.socket(zmq.PAIR)
     a.linger = b.linger = 0
     a.hwm = b.hwm = 1
-    iface = "inproc://%s" % binascii.hexlify(os.urandom(8))
+    iface = f"inproc://{binascii.hexlify(os.urandom(8))}"
     a.bind(iface)
     b.connect(iface)
     return a, b
