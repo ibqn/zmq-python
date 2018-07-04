@@ -17,18 +17,18 @@ def client_task(ctx, pipe):
 
     print("Synchronous round-trip test…")
     start = time.time()
-    requests = 10000
+    requests = 50000
     for r in range(requests):
-        client.send(b"hello")
-        client.recv()
+        client.send_multipart([b"", b"hello"])
+        client.recv_multipart()
     print(f" {requests / (time.time() - start):.0f} calls/second")
 
     print("Asynchronous round-trip test…")
     start = time.time()
     for r in range(requests):
-        client.send(b"hello")
+        client.send_multipart([b"", b"hello"])
     for r in range(requests):
-        client.recv()
+        client.recv_multipart()
     print(f" {requests / (time.time() - start):.0f} calls/second")
 
     # signal done:
