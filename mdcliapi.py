@@ -53,7 +53,7 @@ class MajorDomoClient(object):
             request = [request]
         request = [MDP.C_CLIENT, service] + request
         if self.verbose:
-            logging.warn(f"I: send request to '{service}' service: ")
+            logging.warn(f"I: send request to '{service.decode()}' service: ")
             dump(request)
         reply = None
 
