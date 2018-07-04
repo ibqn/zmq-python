@@ -13,17 +13,15 @@ def client_task(ctx, pipe):
     client.connect("tcp://localhost:5555")
 
     print("Setting up test…")
-    time.sleep(1)
+    time.sleep(.5)
 
     print("Synchronous round-trip test…")
     start = time.time()
     requests = 10000
     for r in range(requests):
-        client.send_multipart([b'', b"hello"])
-        # print('o')
-        client.recv_multipart()
-        # print('x')
-    print(f" {requests / (time.time() - start)} calls/second")
+        client.send(b"hello")
+        client.recv()
+    print(f" {requests / (time.time() - start):.0f} calls/second")
 
     print("Asynchronous round-trip test…")
     start = time.time()
@@ -31,7 +29,7 @@ def client_task(ctx, pipe):
         client.send(b"hello")
     for r in range(requests):
         client.recv()
-    print(f" {requests / (time.time() - start)} calls/second")
+    print(f" {requests / (time.time() - start):.0f} calls/second")
 
     # signal done:
     pipe.send(b"done")
@@ -85,7 +83,10 @@ def main():
     ctx = zmq.Context()
     client, pipe = zpipe(ctx)
 
-    client_thread = threading.Thread(target=client_task, args=(ctx, pipe))
+    client_thread = threading.Thread(
+        target=client_task,
+        args=(ctx, pipe)
+    )
     worker_thread = threading.Thread(target=worker_task)
     worker_thread.daemon = True
     broker_thread = threading.Thread(target=broker_task)
