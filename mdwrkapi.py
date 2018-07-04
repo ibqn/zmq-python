@@ -77,12 +77,16 @@ class MajorDomoWorker(object):
             msg = [msg]
 
         if option:
-            msg = [option] + msg
+            msg = [
+                option.encode() if isinstance(option, str) else option
+            ] + msg
 
-        msg = ['', MDP.W_WORKER, command] + msg
+        msg = [b'', MDP.W_WORKER, command] + msg
         if self.verbose:
-            logging.info(f"I: sending {command} to broker")
-            dump(msg)
+            logging.info(f"I: sending {MDP.format_msg(command)} to broker")
+            # use custom format function for printing messages
+            dump(msg, MDP.format_msg)
+
         self.worker.send_multipart(msg)
 
     def recv(self, reply=None):
@@ -92,7 +96,7 @@ class MajorDomoWorker(object):
 
         if reply is not None:
             assert self.reply_to is not None
-            reply = [self.reply_to, ''] + reply
+            reply = [self.reply_to, b''] + reply
             self.send_to_broker(MDP.W_REPLY, msg=reply)
 
         self.expect_reply = True
@@ -108,14 +112,14 @@ class MajorDomoWorker(object):
                 msg = self.worker.recv_multipart()
                 if self.verbose:
                     logging.info("I: received message from broker: ")
-                    dump(msg)
+                    dump(msg, MDP.format_msg)
 
                 self.liveness = self.HEARTBEAT_LIVENESS
                 # Don't try to handle errors, just assert noisily
                 assert len(msg) >= 3
 
                 empty = msg.pop(0)
-                assert empty == ''
+                assert empty == b''
 
                 header = msg.pop(0)
                 assert header == MDP.W_WORKER
@@ -127,7 +131,7 @@ class MajorDomoWorker(object):
                     self.reply_to = msg.pop(0)
                     # pop empty
                     empty = msg.pop(0)
-                    assert empty == ''
+                    assert empty == b''
 
                     return msg  # We have a request to process
                 elif command == MDP.W_HEARTBEAT:

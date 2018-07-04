@@ -42,7 +42,7 @@ class MajorDomoBroker(object):
     """
 
     # We'd normally pull these from config data
-    INTERNAL_SERVICE_PREFIX = "mmi."
+    INTERNAL_SERVICE_PREFIX = b"mmi."
     HEARTBEAT_LIVENESS = 3  # 3-5 is reasonable
     HEARTBEAT_INTERVAL = 2500  # msecs
     HEARTBEAT_EXPIRY = HEARTBEAT_INTERVAL * HEARTBEAT_LIVENESS
@@ -68,7 +68,7 @@ class MajorDomoBroker(object):
         self.services = {}
         self.workers = {}
         self.waiting = []
-        self.heartbeat_at = time.time() + 1e-3*self.HEARTBEAT_INTERVAL
+        self.heartbeat_at = time.time() + 1e-3 * self.HEARTBEAT_INTERVAL
         self.ctx = zmq.Context()
         self.socket = self.ctx.socket(zmq.ROUTER)
         self.socket.linger = 0
@@ -93,11 +93,11 @@ class MajorDomoBroker(object):
                 msg = self.socket.recv_multipart()
                 if self.verbose:
                     logging.info("I: received message:")
-                    dump(msg)
+                    dump(msg, MDP.format_msg)
 
                 sender = msg.pop(0)
                 empty = msg.pop(0)
-                assert empty == ''
+                assert empty == b''
                 header = msg.pop(0)
 
                 if (MDP.C_CLIENT == header):
@@ -122,7 +122,7 @@ class MajorDomoBroker(object):
         assert len(msg) >= 2  # Service name + body
         service = msg.pop(0)
         # Set reply return address to client sender
-        msg = [sender, ''] + msg
+        msg = [sender, b''] + msg
         if service.startswith(self.INTERNAL_SERVICE_PREFIX):
             self.service_internal(service, msg)
         else:
@@ -157,8 +157,9 @@ class MajorDomoBroker(object):
                 # Remove & save client return envelope and insert the
                 # protocol header and service name, then rewrap envelope.
                 client = msg.pop(0)
-                empty = msg.pop(0)  # ?
-                msg = [client, '', MDP.C_CLIENT, worker.service.name] + msg
+                empty = msg.pop(0)
+                assert empty == b''
+                msg = [client, b'', MDP.C_CLIENT, worker.service.name] + msg
                 self.socket.send_multipart(msg)
                 self.worker_waiting(worker)
             else:
@@ -180,7 +181,7 @@ class MajorDomoBroker(object):
         """Deletes worker from all data structures, and deletes worker."""
         assert worker is not None
         if disconnect:
-            self.send_to_worker(worker, MDP.W_DISCONNECT, None, None)
+            self.send_to_worker(worker, MDP.W_DISCONNECT)
 
         if worker.service is not None:
             worker.service.waiting.remove(worker)
@@ -195,7 +196,7 @@ class MajorDomoBroker(object):
             worker = Worker(identity, address, self.HEARTBEAT_EXPIRY)
             self.workers[identity] = worker
             if self.verbose:
-                logging.info("I: registering new worker: %s", identity)
+                logging.info(f"I: registering new worker: {identity.decode()}")
 
         return worker
 
@@ -215,7 +216,7 @@ class MajorDomoBroker(object):
         We use a single socket for both clients and workers.
         """
         self.socket.bind(endpoint)
-        logging.info("I: MDP broker/0.1.1 is active at %s", endpoint)
+        logging.info(f"I: MDP broker/0.1.1 is active at {endpoint}")
 
     def service_internal(self, service, msg):
         """Handle internal service according to 8/MMI specification"""
@@ -234,9 +235,9 @@ class MajorDomoBroker(object):
         """Send heartbeats to idle workers if it's time"""
         if (time.time() > self.heartbeat_at):
             for worker in self.waiting:
-                self.send_to_worker(worker, MDP.W_HEARTBEAT, None, None)
+                self.send_to_worker(worker, MDP.W_HEARTBEAT)
 
-            self.heartbeat_at = time.time() + 1e-3*self.HEARTBEAT_INTERVAL
+            self.heartbeat_at = time.time() + 1e-3 * self.HEARTBEAT_INTERVAL
 
     def purge_workers(self):
         """Look for & kill expired workers.
@@ -258,7 +259,7 @@ class MajorDomoBroker(object):
         # Queue to broker and service waiting lists
         self.waiting.append(worker)
         worker.service.waiting.append(worker)
-        worker.expiry = time.time() + 1e-3*self.HEARTBEAT_EXPIRY
+        worker.expiry = time.time() + 1e-3 * self.HEARTBEAT_EXPIRY
         self.dispatch(worker.service, None)
 
     def dispatch(self, service, msg):
@@ -273,7 +274,7 @@ class MajorDomoBroker(object):
             self.waiting.remove(worker)
             self.send_to_worker(worker, MDP.W_REQUEST, None, msg)
 
-    def send_to_worker(self, worker, command, option, msg=None):
+    def send_to_worker(self, worker, command, option=None, msg=None):
         """Send message to worker.
 
         If message is provided, sends that message.
@@ -288,11 +289,14 @@ class MajorDomoBroker(object):
         # and routing envelope
         if option is not None:
             msg = [option] + msg
-        msg = [worker.address, '', MDP.W_WORKER, command] + msg
+        msg = [worker.address, b'', MDP.W_WORKER, command] + msg
 
         if self.verbose:
-            logging.info("I: sending %r to worker", command)
-            dump(msg)
+            logging.info(
+                f"I: sending {MDP.format_msg(command)} "
+                f"to worker {hexlify(worker.address).decode()}"
+            )
+            dump(msg, MDP.format_msg)
 
         self.socket.send_multipart(msg)
 

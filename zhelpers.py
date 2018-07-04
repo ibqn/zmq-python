@@ -25,7 +25,7 @@ def socket_set_hwm(socket, hwm=-1):
         socket.hwm = hwm
 
 
-def dump(msg_or_socket):
+def dump(msg_or_socket, format_msg=None):
     """Receives all message parts from socket, printing each frame neatly"""
     if isinstance(msg_or_socket, zmq.Socket):
         # it's a socket, call on current message
@@ -36,9 +36,9 @@ def dump(msg_or_socket):
     for part in msg:
         content += f"[{len(part):03d}] "
         try:
-            content += part.decode('ascii')
+            content += format_msg(part) if format_msg else part.decode()
         except UnicodeDecodeError:
-            content += f"0x{binascii.hexlify(part).decode('ascii')}"
+            content += f"0x{binascii.hexlify(part).decode()}"
         content += '\n'
     sys.stdout.write(content)
     sys.stdout.flush()
