@@ -248,7 +248,8 @@ class MajorDomoBroker(object):
         while self.waiting:
             w = self.waiting[0]
             if w.expiry < time.time():
-                logging.info("I: deleting expired worker: %s", w.identity)
+                addr = w.identity.decode()
+                logging.info(f"I: deleting expired worker: {addr}")
                 self.delete_worker(w, False)
                 self.waiting.pop(0)
             else:

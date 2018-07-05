@@ -77,6 +77,7 @@ class MajorDomoClient(object):
             assert len(msg) >= 4
 
             empty = msg.pop(0)
+            assert empty == b''
             header = msg.pop(0)
             assert MDP.C_CLIENT == header
 
