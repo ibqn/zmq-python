@@ -220,10 +220,10 @@ class MajorDomoBroker(object):
 
     def service_internal(self, service, msg):
         """Handle internal service according to 8/MMI specification"""
-        returncode = "501"
-        if "mmi.service" == service:
+        returncode = b"501"
+        if b"mmi.service" == service:
             name = msg[-1]
-            returncode = "200" if name in self.services else "404"
+            returncode = b"200" if name in self.services else b"404"
         msg[-1] = returncode
 
         # insert the protocol header and service name
@@ -240,20 +240,21 @@ class MajorDomoBroker(object):
             self.heartbeat_at = time.time() + 1e-3 * self.HEARTBEAT_INTERVAL
 
     def purge_workers(self):
-        """Look for & kill expired workers.
-
-        Workers are oldest to most recent,
-        so we stop at the first alive worker.
-        """
-        while self.waiting:
-            w = self.waiting[0]
-            if w.expiry < time.time():
-                addr = w.identity.decode()
+        """Look for and kill expired workers."""
+        # we need to duplicate the sequence with [:]
+        # which we modify while iterating over it
+        # for index, worker in enumerate(self.waiting[:]):
+        for worker in self.waiting[:]:
+            if worker.expiry < time.time():
+                addr = worker.identity.decode()
                 logging.info(f"I: deleting expired worker: {addr}")
-                self.delete_worker(w, False)
-                self.waiting.pop(0)
-            else:
-                break
+                self.delete_worker(worker, False)
+                # we use enumerate to obtain an index
+                # so we can use del to remove worker by index
+                # instead of relying on self.waiting.remove(worker) which
+                # performs an additional search to find an item for removing
+                # del self.waiting[index]
+                self.waiting.remove(worker)
 
     def worker_waiting(self, worker):
         """This worker is now waiting for work."""
