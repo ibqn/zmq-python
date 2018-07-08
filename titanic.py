@@ -1,4 +1,4 @@
-import cPickle as pickle
+import pickle
 import os
 import sys
 import threading
@@ -18,7 +18,7 @@ TITANIC_DIR = ".titanic"
 
 def request_filename(uuid):
     """Returns freshly allocated request filename for given UUID"""
-    return os.path.join(TITANIC_DIR, f"{iiud}.req")
+    return os.path.join(TITANIC_DIR, f"{uuid}.req")
 
 
 def reply_filename(uuid):
@@ -29,8 +29,12 @@ def reply_filename(uuid):
 # Titanic request service
 
 
-def titanic_request(pipe):
-    worker = MajorDomoWorker("tcp://localhost:5555", b"titanic.request")
+def titanic_request(pipe, verbose=False):
+    worker = MajorDomoWorker(
+        "tcp://localhost:5555",
+        b"titanic.request",
+        verbose
+    )
 
     reply = None
 
@@ -62,8 +66,12 @@ def titanic_request(pipe):
 # Titanic reply service
 
 
-def titanic_reply():
-    worker = MajorDomoWorker("tcp://localhost:5555", b"titanic.reply")
+def titanic_reply(verbose=False):
+    worker = MajorDomoWorker(
+        "tcp://localhost:5555",
+        b"titanic.reply",
+        verbose
+    )
     reply = None
 
     while True:
@@ -88,8 +96,12 @@ def titanic_reply():
 # Titanic close service
 
 
-def titanic_close():
-    worker = MajorDomoWorker("tcp://localhost:5555", "titanic.close")
+def titanic_close(verbose=False):
+    worker = MajorDomoWorker(
+        "tcp://localhost:5555",
+        b"titanic.close",
+        verbose
+    )
     reply = None
 
     while True:
@@ -106,7 +118,7 @@ def titanic_close():
             os.remove(req_filename)
         if os.path.exists(rep_filename):
             os.remove(rep_filename)
-        reply = ["200"]
+        reply = [b"200"]
 
 
 def service_success(client, uuid):
@@ -123,8 +135,8 @@ def service_success(client, uuid):
     service = request.pop(0)
     # Use MMI protocol to check if service is available
     mmi_request = [service]
-    mmi_reply = client.send("mmi.service", mmi_request)
-    service_ok = mmi_reply and mmi_reply[0] == "200"
+    mmi_reply = client.send(b"mmi.service", mmi_request)
+    service_ok = mmi_reply and mmi_reply[0] == b"200"
 
     if service_ok:
         reply = client.send(service, request)
@@ -143,17 +155,20 @@ def main():
 
     # Create MDP client session with short timeout
     client = MajorDomoClient("tcp://localhost:5555", verbose)
-    client.timeout = 1000 # 1 sec
-    client.retries = 1 # only 1 retry
+    client.timeout = 1000  # 1 sec
+    client.retries = 1  # only 1 retry
 
     request_pipe, peer = zpipe(ctx)
-    request_thread = threading.Thread(target=titanic_request, args=(peer,))
+    request_thread = threading.Thread(
+        target=titanic_request,
+        args=(peer, verbose, )
+    )
     request_thread.daemon = True
     request_thread.start()
-    reply_thread = threading.Thread(target=titanic_reply)
+    reply_thread = threading.Thread(target=titanic_reply, args=(verbose, ))
     reply_thread.daemon = True
     reply_thread.start()
-    close_thread = threading.Thread(target=titanic_close)
+    close_thread = threading.Thread(target=titanic_close, args=(verbose, ))
     close_thread.daemon = True
     close_thread.start()
 
@@ -168,27 +183,25 @@ def main():
         try:
             items = poller.poll(1000)
         except KeyboardInterrupt:
-            break;              # Interrupted
+            break  # Interrupted
 
         if items:
-
             # Append UUID to queue, prefixed with '-' for pending
             uuid = request_pipe.recv()
             with open(os.path.join(TITANIC_DIR, 'queue'), 'a') as f:
-                f.write("-%s\n" % uuid)
+                f.write(f"-{uuid}\n")
 
         # Brute-force dispatcher
-        #
         with open(os.path.join(TITANIC_DIR, 'queue'), 'r+b') as f:
             for entry in f.readlines():
                 # UUID is prefixed with '-' if still waiting
                 if entry[0] == '-':
-                    uuid = entry[1:].rstrip() # rstrip '\n' etc.
-                    print "I: processing request %s" % uuid
+                    uuid = entry[1:].rstrip()  # rstrip '\n' etc.
+                    print(f"I: processing request {uuid}")
                     if service_success(client, uuid):
                         # mark queue entry as processed
                         here = f.tell()
-                        f.seek(-1*len(entry), os.SEEK_CUR)
+                        f.seek(-1 * len(entry), os.SEEK_CUR)
                         f.write('+')
                         f.seek(here, os.SEEK_SET)
 
