@@ -29,14 +29,14 @@ def main():
     session = MajorDomoClient("tcp://localhost:5555", verbose)
 
     # 1. Send 'echo' request to Titanic
-    request = [b"echo", b"Hello world"]
+    request = [b"echo", b"Guten Tag"]
     reply = service_call(session, b"titanic.request", request)
 
     uuid = None
 
     if reply:
         uuid = reply.pop(0)
-        print(f"I: request UUID {uuid}")
+        print(f"I: request UUID {uuid.decode()}")
 
     # 2. Wait until we get a reply
     while True:
@@ -46,7 +46,7 @@ def main():
 
         if reply:
             reply_string = reply[-1]
-            print(f"Reply: {reply_string}")
+            print(f"Reply: {reply_string.decode()}")
 
             # 3. Close request
             request = [uuid]
