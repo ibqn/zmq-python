@@ -33,6 +33,7 @@ def dump(msg_or_socket, format_msg=None):
     else:
         msg = msg_or_socket
     content = "-" * 40 + "\n"
+    msg = msg if isinstance(msg, list) else [msg]
     for part in msg:
         content += f"[{len(part):03d}] "
         try:
