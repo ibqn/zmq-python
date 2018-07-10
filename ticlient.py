@@ -28,8 +28,18 @@ def main():
     verbose = '-v' in sys.argv
     session = MajorDomoClient("tcp://localhost:5555", verbose)
 
+    service = b'echo'
+    for arg in sys.argv:
+        if arg.startswith('-s='):
+            service = arg.split('=')[1].encode()
+
+    msg = b'Hello world'
+    for arg in sys.argv:
+            if arg.startswith('-r='):
+                msg = arg.split('=')[1].encode()
+
     # 1. Send 'echo' request to Titanic
-    request = [b"echo", b"Guten Tag"]
+    request = [service, msg]
     reply = service_call(session, b"titanic.request", request)
 
     uuid = None
