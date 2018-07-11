@@ -1,23 +1,29 @@
 import logging
 from argparse import ArgumentParser
 import time
+from enum import IntEnum
 from zhelpers import dump
 
-from zhelpers import zmq
+import zmq
 
 
-STATE_PRIMARY = 1
-STATE_BACKUP = 2
-STATE_ACTIVE = 3
-STATE_PASSIVE = 4
+class State(IntEnum):
+    PRIMARY = 1
+    BACKUP = 2
+    ACTIVE = 3
+    PASSIVE = 4
 
-PEER_PRIMARY = 1
-PEER_BACKUP = 2
-PEER_ACTIVE = 3
-PEER_PASSIVE = 4
-CLIENT_REQUEST = 5
-PEER_TIMEOUT = 6
 
+class Event(IntEnum):
+    PEER_PRIMARY = 1
+    PEER_BACKUP = 2
+    PEER_ACTIVE = 3
+    PEER_PASSIVE = 4
+    CLIENT_REQUEST = 5
+    PEER_TIMEOUT = 6
+
+
+# constants definition
 HEARTBEAT = 1000
 PEERWAITLIMIT = 3 * HEARTBEAT
 
@@ -34,36 +40,41 @@ class BStarException(Exception):
 
 
 fsm_states = {
-    STATE_PRIMARY: {
-        PEER_BACKUP: (
-            "I: connected to backup (slave), ready as master", STATE_ACTIVE,
+    State.PRIMARY: {
+        Event.PEER_BACKUP: (
+            "I: connected to backup (slave), ready as master", State.ACTIVE,
         ),
-        PEER_ACTIVE: (
-            "I: connected to backup (master), ready as slave", STATE_PASSIVE,
+        Event.PEER_ACTIVE: (
+            "I: connected to backup (master), ready as slave", State.PASSIVE,
         ),
     },
-    STATE_BACKUP: {
-        PEER_ACTIVE: (
-            "I: connected to primary (master), ready as slave", STATE_PASSIVE,
+    State.BACKUP: {
+        Event.PEER_ACTIVE: (
+            "I: connected to primary (master), ready as slave", State.PASSIVE,
         ),
-        CLIENT_REQUEST: ("", False, ),
-        PEER_TIMEOUT: (
+        Event.CLIENT_REQUEST: ("", False, ),
+        Event.PEER_TIMEOUT: (
             "I: cannot connect to primary (master), ready as slave",
-            STATE_PASSIVE,
+            State.PASSIVE,
         ),
     },
-    STATE_ACTIVE: {
-        PEER_ACTIVE: ("E: fatal error - dual masters, aborting", False, ),
+    State.ACTIVE: {
+        Event.PEER_ACTIVE: (
+            "E: fatal error - dual masters, aborting", False,
+        ),
     },
-    STATE_PASSIVE: {
-        PEER_PRIMARY: (
-            "I: primary (slave) is restarting, ready as master", STATE_ACTIVE,
+    State.PASSIVE: {
+        Event.PEER_PRIMARY: (
+            "I: primary (slave) is restarting, ready as master", State.ACTIVE,
         ),
-        PEER_BACKUP: (
-            "I: backup (slave) is restarting, ready as master", STATE_ACTIVE,
+        Event.PEER_BACKUP: (
+            "I: backup (slave) is restarting, ready as master", State.ACTIVE,
         ),
-        PEER_PASSIVE: ("E: fatal error - dual slaves, aborting", False, ),
-        CLIENT_REQUEST: (CLIENT_REQUEST, True, ),  # Say true, check peer later
+        Event.PEER_PASSIVE: (
+            "E: fatal error - dual slaves, aborting", False,
+        ),
+        # Say true, check peer later
+        Event.CLIENT_REQUEST: (Event.CLIENT_REQUEST, True, ),
     }
 }
 
@@ -78,10 +89,10 @@ def run_fsm(fsm):
         return
     if state is False:
         raise BStarException(msg)
-    elif msg == CLIENT_REQUEST:
+    elif msg == Event.CLIENT_REQUEST:
         assert fsm.peer_expiry > 0
         if int(time.time() * 1000) > fsm.peer_expiry:
-            fsm.state = STATE_ACTIVE
+            fsm.state = State.ACTIVE
         else:
             raise BStarException()
     else:
@@ -116,14 +127,14 @@ def main():
         frontend.bind("tcp://*:5001")
         statepub.bind("tcp://*:5003")
         statesub.connect("tcp://localhost:5004")
-        fsm.state = STATE_PRIMARY
+        fsm.state = State.PRIMARY
     elif args.backup:
         print("I: Backup slave, waiting for primary (master)")
         frontend.bind("tcp://*:5002")
         statepub.bind("tcp://*:5004")
         statesub.connect("tcp://localhost:5003")
         statesub.setsockopt_string(zmq.SUBSCRIBE, "")
-        fsm.state = STATE_BACKUP
+        fsm.state = State.BACKUP
 
     send_state_at = int(time.time() * 1000 + HEARTBEAT)
     poller = zmq.Poller()
@@ -140,7 +151,7 @@ def main():
             if args.verbose:
                 logging.info('Received frontend.')
                 dump(msg)
-            fsm.event = CLIENT_REQUEST
+            fsm.event = Event.CLIENT_REQUEST
             try:
                 run_fsm(fsm)
                 frontend.send_multipart(msg)
@@ -152,7 +163,7 @@ def main():
             if args.verbose:
                 logging.info('Received state.')
                 dump(msg)
-            fsm.event = int(msg)
+            fsm.event = Event(int(msg))
             del msg
             try:
                 run_fsm(fsm)
@@ -163,7 +174,7 @@ def main():
             if not fsm.peer_expiry:
                 fsm.peer_expiry = int(time.time() * 1000) + PEERWAITLIMIT
             if int(time.time() * 1000) >= fsm.peer_expiry:
-                fsm.event = PEER_TIMEOUT
+                fsm.event = Event.PEER_TIMEOUT
                 try:
                     run_fsm(fsm)
                 except BStarException:
