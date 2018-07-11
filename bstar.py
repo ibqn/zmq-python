@@ -1,6 +1,10 @@
 import time
 
 import zmq
+# from zmq.eventloop.ioloop import IOLoop
+# from tornado.ioloop import IOLoop
+# we must have tornado library directly by running
+# pip install tornado
 from zmq.eventloop.ioloop import (
     IOLoop,
     PeriodicCallback,

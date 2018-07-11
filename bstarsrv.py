@@ -1,3 +1,4 @@
+import sys
 import logging
 from argparse import ArgumentParser
 import time
@@ -135,6 +136,9 @@ def main():
         statesub.connect("tcp://localhost:5003")
         statesub.setsockopt_string(zmq.SUBSCRIBE, "")
         fsm.state = State.BACKUP
+    else:
+        print("Provide either -p{rimary} | -b{ackup}")
+        sys.exit(1)
 
     send_state_at = int(time.time() * 1000 + HEARTBEAT)
     poller = zmq.Poller()
