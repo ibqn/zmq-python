@@ -16,8 +16,10 @@ PEER_BACKUP = 2
 PEER_ACTIVE = 3
 PEER_PASSIVE = 4
 CLIENT_REQUEST = 5
+PEER_TIMEOUT = 6
 
 HEARTBEAT = 1000
+PEERWAITLIMIT = 3 * HEARTBEAT
 
 
 class BStarState(object):
@@ -38,16 +40,20 @@ fsm_states = {
         ),
         PEER_ACTIVE: (
             "I: connected to backup (master), ready as slave", STATE_PASSIVE,
-        )
+        ),
     },
     STATE_BACKUP: {
         PEER_ACTIVE: (
             "I: connected to primary (master), ready as slave", STATE_PASSIVE,
         ),
-        CLIENT_REQUEST: ("", False, )
+        CLIENT_REQUEST: ("", False, ),
+        PEER_TIMEOUT: (
+            "I: cannot connect to primary (master), ready as slave",
+            STATE_PASSIVE,
+        ),
     },
     STATE_ACTIVE: {
-        PEER_ACTIVE: ("E: fatal error - dual masters, aborting", False, )
+        PEER_ACTIVE: ("E: fatal error - dual masters, aborting", False, ),
     },
     STATE_PASSIVE: {
         PEER_PRIMARY: (
@@ -57,7 +63,7 @@ fsm_states = {
             "I: backup (slave) is restarting, ready as master", STATE_ACTIVE,
         ),
         PEER_PASSIVE: ("E: fatal error - dual slaves, aborting", False, ),
-        CLIENT_REQUEST: (CLIENT_REQUEST, True, )  # Say true, check peer later
+        CLIENT_REQUEST: (CLIENT_REQUEST, True, ),  # Say true, check peer later
     }
 }
 
@@ -153,6 +159,16 @@ def main():
                 fsm.peer_expiry = int(time.time() * 1000) + (2 * HEARTBEAT)
             except BStarException:
                 break
+        else:
+            if not fsm.peer_expiry:
+                fsm.peer_expiry = int(time.time() * 1000) + PEERWAITLIMIT
+            if int(time.time() * 1000) >= fsm.peer_expiry:
+                fsm.event = PEER_TIMEOUT
+                try:
+                    run_fsm(fsm)
+                except BStarException:
+                    pass
+
         if int(time.time() * 1000) >= send_state_at:
             if args.verbose:
                 logging.info(f'Sending state {fsm.state:d}.')
