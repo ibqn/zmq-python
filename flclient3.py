@@ -18,13 +18,14 @@ def main():
     for i in range(requests):
         request = [b"random name"]
         reply = client.request(request)
+        # time.sleep(10)
         if not reply:
             print("E: name service not available, aborting")
             return
 
     print(
         "Average round trip cost: "
-        f"{1e6 * (time.time() - start) / requests:d} usec"
+        f"{1e6 * (time.time() - start) / requests:.0f} usec"
     )
 
 

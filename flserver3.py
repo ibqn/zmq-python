@@ -27,10 +27,10 @@ def main():
         # Frame 2: request body
         [address, control] = request[:2]
         reply = [address, control]
-        if control == "PING":
-            reply[1] = "PONG"
+        if control == b"PING":
+            reply[1] = b"PONG"
         else:
-            reply.append("OK")
+            reply.append(b"OK")
         if verbose:
             dump(reply)
         server.send_multipart(reply)

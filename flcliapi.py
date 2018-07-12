@@ -41,7 +41,7 @@ class FreelanceClient(object):
         """Connect to new server endpoint
         Sends [CONNECT][endpoint] to the agent
         """
-        self.pipe.send_multipart([b"CONNECT", endpoint])
+        self.pipe.send_multipart([b"CONNECT", endpoint.encode()])
         time.sleep(0.1)  # Allow connection to come up
 
     def request(self, msg):
@@ -139,8 +139,11 @@ class FreelanceAgent(object):
         server.expires = time.time() + 1e-3 * SERVER_TTL
 
         # Frame 1 may be sequence number for reply
-        sequence = reply.pop(0)
-        if int(sequence) == self.sequence:
+        # or PONG responce
+        frame1 = reply.pop(0)
+        if frame1 == b'PONG':
+            pass
+        elif int(frame1.decode()) == self.sequence:
             self.sequence += 1
             reply = [b"OK"] + reply
             self.pipe.send_multipart(reply)
@@ -179,7 +182,7 @@ def agent_task(ctx, pipe):
         if agent.request:
             if (time.time() >= agent.expires):
                 # Request expired, kill it
-                agent.pipe.send("FAILED")
+                agent.pipe.send(b"FAILED")
                 agent.request = None
             else:
                 # Find server to talk to, remove any expired ones
