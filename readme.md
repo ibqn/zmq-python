@@ -28,7 +28,10 @@ pip install --requirement ./requirements.txt
 pip freeze
 pycodestyle==2.4.0
 pyzmq==17.0.0
+tornado==5.0.2
 ```
+
+Furthermore, `tornado` asynchronous networking library is used for some code examples.
 
 If you prefer to observe the communication on wire, say port `tcp://*:5555`, than `ngrep` and `tcpdump` can be used for this
 

@@ -1,4 +1,5 @@
 pyzmq
+tornado
 
 # optional for pep8 hints
 pycodestyle
