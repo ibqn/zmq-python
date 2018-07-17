@@ -84,9 +84,7 @@ def state_manager(ctx, pipe):
             msg = snapshot.recv_multipart()
             identity = msg[0]
             request = msg[1]
-            if request == b"ICANHAZ?":
-                pass
-            else:
+            if request != b"ICANHAZ?":
                 print("E: bad request, aborting")
                 break
 
