@@ -75,16 +75,20 @@ class KVMsg(object):
             del dikt[self.key]
 
     def send(self, socket):
-        """Send key-value message to socket; any empty frames are sent as such."""
+        """
+        Send key-value message to socket; any empty frames are sent as such.
+        """
         key = b'' if self.key is None else self.key
         seq_s = struct.pack('!q', self.sequence)
         body = b'' if self.body is None else self.body
         prop_s = encode_properties(self.properties)
-        socket.send_multipart([ key, seq_s, self.uuid, prop_s, body ])
+        socket.send_multipart([key, seq_s, self.uuid, prop_s, body])
 
     @classmethod
     def recv(cls, socket):
-        """Reads key-value message from socket, returns new kvmsg instance."""
+        """
+        Reads key-value message from socket, returns new kvmsg instance.
+        """
         return cls.from_msg(socket.recv_multipart())
 
     @classmethod
@@ -105,7 +109,9 @@ class KVMsg(object):
             size = len(self.body)
             data = repr(self.body)
 
-        mstr = "[seq:{seq}][key:{key}][size:{size}][props:{props}][data:{data}]".format(
+        mstr = (
+            "[seq:{seq}][key:{key}][size:{size}][props:{props}][data:{data}]"
+        ).format(
             seq=self.sequence,
             # uuid=hexlify(self.uuid),
             key=self.key,
@@ -116,7 +122,7 @@ class KVMsg(object):
         return mstr
 
     def dump(self):
-        print("@<@@"[[/span]], [[span style="color:#008000"]]str[[/span]]([[span style="color:#008000"]]self[[/span]]), [[span style="color:#BA2121"]]"@@>@", file=sys.stderr)
+        print(self, file=sys.stderr)
 # ---------------------------------------------------------------------
 # Runs self test of class
 
@@ -126,40 +132,44 @@ def test_kvmsg(verbose):
 
     # Prepare our context and sockets
     ctx = zmq.Context()
-    output = ctx.socket(zmq.DEALER)
-    output.bind("ipc://kvmsg_selftest.ipc")
-    input = ctx.socket(zmq.DEALER)
-    input.connect("ipc://kvmsg_selftest.ipc")
+    output_pipe = ctx.socket(zmq.DEALER)
+    output_pipe.bind("ipc://kvmsg_selftest.ipc")
+    input_pipe = ctx.socket(zmq.DEALER)
+    input_pipe.connect("ipc://kvmsg_selftest.ipc")
 
     kvmap = {}
     # Test send and receive of simple message
     kvmsg = KVMsg(1)
-    kvmsg.key = b"key"
-    kvmsg.body = b"body"
+    kvmsg.key = b"key_one"
+    kvmsg.body = b"first body content"
     if verbose:
+        print('first message to be sent', file=sys.stderr)
         kvmsg.dump()
-    kvmsg.send(output)
+    kvmsg.send(output_pipe)
     kvmsg.store(kvmap)
 
-    kvmsg2 = KVMsg.recv(input)
+    kvmsg2 = KVMsg.recv(input_pipe)
     if verbose:
+        print('first received message', file=sys.stderr)
         kvmsg2.dump()
-    assert kvmsg2.key == b"key"
+    assert kvmsg2.key == b"key_one"
     kvmsg2.store(kvmap)
 
     assert len(kvmap) == 1  # shouldn't be different
 
     # test send/recv with properties:
-    kvmsg = KVMsg(2, key=b"key", body=b"body")
+    kvmsg = KVMsg(2, key=b"key_two", body=b"second body content")
     kvmsg[b"prop1"] = b"value1"
     kvmsg[b"prop2"] = b"value2"
     kvmsg[b"prop3"] = b"value3"
     assert kvmsg[b"prop1"] == b"value1"
     if verbose:
+        print('second message to be sent', file=sys.stderr)
         kvmsg.dump()
-    kvmsg.send(output)
-    kvmsg2 = KVMsg.recv(input)
+    kvmsg.send(output_pipe)
+    kvmsg2 = KVMsg.recv(input_pipe)
     if verbose:
+        print('second received message', file=sys.stderr)
         kvmsg2.dump()
     # ensure properties were preserved
     assert kvmsg2.key == kvmsg.key
