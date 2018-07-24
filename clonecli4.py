@@ -1,15 +1,16 @@
 import random
+import sys
 import time
 
 import zmq
 
 from kvsimple import KVMsg
 
+
 SUBTREE = b"/client/"
 
 
 def main():
-
     # Prepare our context and subscriber
     ctx = zmq.Context()
     snapshot = ctx.socket(zmq.DEALER)
@@ -75,4 +76,7 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print('keybord interrupted', file=sys.stderr)
